@@ -1,18 +1,19 @@
 from lib2to3.pgen2.token import LEFTSHIFT
 from pickle import FALSE
 from re import A, S
+from tkinter import TOP
 from cairo import FontWeight
 from manim import *
-from numpy import int_
-#import plane
-
+from numpy import int_, size
 
 class Main(Scene):
     _texTemplate = None
 
     def construct(self): 
-        self.create_texTemplate()
-        self.matrixMult180()
+        g:VGroup = self.display_rot_pow2()
+        self.next_section()
+        self.display_rot_eq(g)
+        self.pause(1)
         return
         self.next_section()
         self.intro()
@@ -27,6 +28,13 @@ class Main(Scene):
         self.display_rotation_matrix()
         self.next_section()
         self.rotate180()
+        self.next_section()
+        self.create_texTemplate()
+        self.matrixMult180()
+        self.pause(2)
+        self.display_rot2()
+        self.clear()
+ 
 
         
         #self.play(theta_tracker.animate.increment_value(360))
@@ -91,10 +99,15 @@ class Main(Scene):
         self.play(FadeIn(tip_text, tex))
         self.wait() 
 
-    def display_rotation_matrix(self):
+
+    def generate_rot(self)->Matrix:
         m = Matrix([["\cos \\theta", "-\sin\\theta"], ["\sin\\theta", "\cos\\theta"]], h_buff=2.6)
         brackets = m.get_brackets()
         brackets.set_color(BLUE)
+        return m
+
+    def display_rotation_matrix(self):
+        m = self.generate_rot()
 
         self.add(m)
         self.pause(5)
@@ -137,12 +150,144 @@ class Main(Scene):
         self.animateMult180(rot1, m1, result_mat)
 
         #self.play(FadeOut(m))
+    
+    def generate_rot_pow2(self)->VGroup:
+        m = Matrix([["\cos \\theta", "-\sin\\theta"], ["\sin\\theta", "\cos\\theta"]], h_buff=2.6)
+        brackets = m.get_brackets()
+        brackets.set_color(BLUE)
+        pow = MathTex(r"^2", font_size=DEFAULT_FONT_SIZE+30)
+        pow.next_to(brackets[1].get_top())
+        return VGroup(m, pow)
+
+    def generate_rot_pow2_r(self)->Matrix:
+        m = Matrix([["\cos^2 \\theta - \sin^2 \\theta", "-2\sin\\theta\cos\\theta"], ["2\sin\\theta\cos\\theta", "\cos^2\\theta - \sin^2\\theta"]], h_buff=3.5)
+        brackets = m.get_brackets()
+        brackets.set_color(BLUE)
+        return m
+    
+    def generate_title(self)->Tex:
+        return Tex(r"\textbf{Double Angles}", font_size=100).shift(2*UP).set_color(BLUE)
+
+    def display_rot_eq(self, group):
+        left_mat = self.generate_rot2()
+        left_mat.next_to(group[1], direction=LEFT)
+        self.play(ReplacementTransform(group[0],left_mat))
+        self.wait()
+        left_entries = left_mat.get_entries()
+        right_entries = group[2].get_entries()
+        left_u1 = Underline(left_entries[0]).set_color(GOLD)
+        right_u1 = Underline(right_entries[0]).set_color(GOLD)
+        left_u2 = Underline(left_entries[2]).set_color(TEAL)
+        right_u2 = Underline(right_entries[2]).set_color(TEAL)
+        self.play(
+            Create(left_u1), 
+            Create(right_u1),
+            left_entries[0].animate.set_color(GOLD),
+            right_entries[0].animate.set_color(GOLD)
+        )
+        
+        self.play(
+            Create(left_u2), 
+            Create(right_u2),
+            left_entries[2].animate.set_color(TEAL),
+            right_entries[2].animate.set_color(TEAL)
+        )
+        self.wait()
+        self.pause(0.5)
+        
+        #cos_group = VGroup(left_entries[0].copy(), right_entries[1].copy(), left_u1, right_u1)
+        #sin_group = VGroup(left_entries[2], right_entries[2], left_u2, right_u2)
+        #cos_group.generate_target()
+        #cos_group.
+        title: Tex = self.generate_title()
+        eq1 = Tex("\\textbf{=}").set_color(GOLD)
+        eq2 = Tex("\\textbf{=}").set_color(TEAL)
+        eq2.next_to(eq1, direction=DOWN)
+        left_cos = VGroup(left_entries[0].copy(), left_u1)
+        right_cos = VGroup(right_entries[0].copy(), right_u1)
+        left_sin = VGroup(left_entries[2].copy(), left_u2)
+        right_sin = VGroup(right_entries[2].copy(), right_u2)
+        left = VGroup(left_cos, left_sin).animate.next_to(eq1, direction=LEFT)
+        right = VGroup(right_cos, right_sin).animate.next_to(eq1, direction=RIGHT)
+        self.play(
+            left, 
+            right, 
+            FadeIn(title, eq1, eq2), 
+            FadeOut(group, left_mat),
+        )
+
+        
+        
+
+    def display_rot_pow2(self)->VGroup:
+        m_group = self.generate_rot_pow2()
+        self.play(FadeIn(m_group))
+        m_group.generate_target()
+        m_group.target.shift(4*LEFT)
+        equal = Tex("\\textbf{=}", font_size = DEFAULT_FONT_SIZE+20)
+        self.play(MoveToTarget(m_group))
+        equal.next_to(m_group)
+        m2 = self.generate_rot_pow2_r()
+        m2.next_to(equal)
+        self.play(FadeIn(m2, equal))
+        self.pause(1)
+        rect = SurroundingRectangle(m2.get_columns()[0])
+        self.play(FadeIn(rect))
+        self.wait()
+        self.pause(0.5)
+        self.play(FadeOut(rect))
+        return VGroup(m_group, equal, m2)
+
+    def generate_rot2(self)->Matrix:
+        m = Matrix([["\cos 2\\theta", "-\sin 2\\theta"], ["\sin 2\\theta", "\cos 2\\theta"]], h_buff=2.6)
+        brackets = m.get_brackets()
+        brackets.set_color(BLUE)
+        return m
+
+    def display_rot2(self):
+        m = self.generate_rot()
+        entries = m.get_entries()
+        m2 = self.generate_rot2()
+        cos2 = MathTex(r"\cos 2\theta").move_to(2*UP + LEFT)
+        sin2 = MathTex(r"\sin 2\theta")
+        sin2.next_to(cos2, buff=RIGHT)
+        self.play(FadeIn(m, cos2, sin2))
+        self.wait()
+        #self.add(index_labels(cos2[0])) #displays numbering labels on each character for debugging
+        cos2[0][3:5].set_color(RED)
+        sin2[0][3:5].set_color(RED)
+        cos2_2 = cos2.copy()
+        sin2_2 = MathTex(r"-\sin 2\theta").move_to(sin2)
+        sin2_2[0][4:6].set_color(RED)
+        cos2.generate_target()
+        sin2.generate_target()
+        cos2_2.generate_target()
+        sin2_2.generate_target()
+        #ReplacementTransform
+        cos2.target.move_to(entries[0])
+        cos2_2.target.move_to(entries[3])
+        sin2.target.move_to(entries[2][0][1])
+        sin2_2.target.move_to(entries[1])
+        self.wait()
+        self.pause(0.5)
+        self.play(
+            MoveToTarget(cos2), 
+            FadeOut(entries[0]),
+            MoveToTarget(cos2_2),
+            FadeOut(entries[3]),
+            MoveToTarget(sin2),
+            FadeOut(entries[1]),
+            MoveToTarget(sin2_2),
+            FadeOut(entries[2]),
+        )
+        self.pause(1)
+
+    
     def animateMult180(self, m: Matrix, m1: Matrix, result_mat: Matrix):
         rows = m.get_rows()
         cols = m1.get_columns()
         equal = Tex("=")
         result_entries = result_mat.get_entries()
-        #int_ans = [MathTex(r"= -1 + 0"), MathTex(r"= 0 + 0")]
         final_ans = [MathTex(r"1"), MathTex(r"0")]
         for i in range(len(rows)):
             
@@ -159,21 +304,21 @@ class Main(Scene):
                 equal = equal.copy().next_to(group_col)
                 ans.next_to(equal) 
                 ans_display = SurroundingRectangle(ans).set_color(RED)
-                ans_group = VGroup(equal, ans, ans_display)
-                self.play(FadeIn(ans_group))
+                ans_group = VGroup(ans, ans_display)
+                self.play(FadeIn(equal, ans_group))
                 self.wait()
                 ans = ans.copy().set_color(YELLOW)
                 ans.generate_target()
                 ans.target.move_to(result_entries[i]) 
-                self.play(MoveToTarget(ans))
-                self.play(FadeOut(group_col, group_row, ans_group))
+                self.play(FadeOut(ans_group), MoveToTarget(ans))
+                self.play(FadeOut(group_col, group_row, equal))
 
 
     def intro(self):
         '''
         '''
-        title: Tex = Tex(r"\textbf{Double Angles}", font_size=144).shift(UP)
-        ids: Tex = Tex(r"\bm{$\cos2\theta$ \quad $\sin2\theta$}", color=RED, tex_template=self._texTemplate, font_size=100).next_to(title, 2*DOWN)
+        title: Tex = self.generate_title() 
+        ids: Tex = Tex(r"\bm{$\cos2\theta$ \quad $\sin2\theta$}", color=green, tex_template=self._texTemplate, font_size=100).next_to(title, 2*DOWN)
 
         self.add(title)
         self.play(FadeIn(ids), run_time=2)
