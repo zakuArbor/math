@@ -1,3 +1,4 @@
+from bisect import bisect
 from lib2to3.pgen2.token import LEFTSHIFT
 from pickle import FALSE
 from re import A, S
@@ -10,36 +11,55 @@ class Main(Scene):
     _texTemplate = None
 
     def construct(self): 
-        g:VGroup = self.display_rot_pow2()
-        self.next_section()
-        self.display_rot_eq(g)
-        self.pause(1)
-        return
-        self.next_section()
-        self.intro()
-        self.pause(5)
+        self.create_texTemplate()
+        #self.triangle_sin2x()
+        self.next_section("intro")
+        self.intro(12)
         self.clear()
-        self.next_section()
-        self.show_book()
-        self.pause(1)
+        self.next_section("approaches")
+        self.other_approach(12)
+        self.next_section("book")
+        self.show_book(18)
+        return
+#        self.pause(0.5)
         self.clear()
         self.next_section()
         self.clear()
         self.display_rotation_matrix()
+        self.pause(15)
         self.next_section()
-        self.rotate180()
+        g = self.rotate180()
         self.next_section()
-        self.create_texTemplate()
-        self.matrixMult180()
-        self.pause(2)
+        self.matrixMult180(g)
+        self.pause(0.5)
         self.display_rot2()
-        self.clear()
- 
-
+        g:VGroup = self.display_rot_pow2()
+        self.next_section()
+        self.display_rot_eq(g)
+        self.pause(0.5)
+        
         
         #self.play(theta_tracker.animate.increment_value(360))
+    def triangle_sin2x(self):
+        triangle = Polygon([-2, -1, 0], [2, -1, 0], [0, 3, 0])
+        bisector = Line([0,-1,0], [0, 2.95, 0]).set_color(WHITE)
+        angle = RightAngle(bisector, Line([-2, -1, 0], [0, -1, 0]), quadrant=(1,-1))
+        group = VGroup(triangle, bisector, angle)
 
-    def init_plane(self)->tuple[Arrow, Text]:
+        self.play(FadeIn(group))
+
+    def other_approach(self, pause = 1):
+        cos_add = MathTex(r"\cos (\alpha + \beta) &= \cos \alpha \cos \beta - \sin \alpha \sin \beta \\" \
+                r"\cos (\theta + \theta) &= cos\theta \cos \theta - \sin \theta \sin \theta \\" \
+                r"\cos(2\theta) &= \boxed{\cos^2\theta - \sin^2\theta}", font_size=DEFAULT_FONT_SIZE)
+        cos_add.to_edge(UL)
+        img:ImageMobject = ImageMobject("wiki-visual.png").to_edge(DR)
+        self.play(FadeIn(cos_add), FadeIn(img), run_time = 2)
+        self.wait()
+        self.pause(pause)
+        self.play(FadeOut(cos_add), FadeOut(img))
+
+    def init_plane(self)->tuple[Arrow, Text, Group, Group]:
         '''
         Sets up the initial plane with a vector drawn and returns the drawn vector
 
@@ -52,17 +72,18 @@ class Main(Scene):
         vec1.set_color(RED)
         tip_text:Text = Text('(1, 0)', font_size=DEFAULT_FONT_SIZE *
                         0.5).next_to(vec1.get_end(), UP)
-        self.create_plane()
-        g = Group(dot, vec1, tip_text)
-        self.play(FadeIn(g), run_time=5)
-        return (vec1, tip_text)
+        plane_group = self.create_plane()
+        g = Group(dot, vec1)
+        self.play(FadeIn(g, tip_text), run_time=0.5)
+
+        return [vec1, tip_text, plane_group, g]
 
     def rotate180(self):
         '''
         '''
         vec1: Arrow = None
         tip_text: Text = None
-        vec1, tip_text = self.init_plane()
+        vec1, tip_text, g1, g2 = self.init_plane()
 
         theta_tracker = ValueTracker(0.1)
         vec_ref = vec1.copy()
@@ -93,11 +114,19 @@ class Main(Scene):
         self.add(a)
         self.wait()
         self.play(FadeOut(tip_text))
-        self.play(theta_tracker.animate.set_value(180), run_time=2)
+        self.play(theta_tracker.animate.set_value(180))
         tip_text = Text('(-1, 0)', font_size=DEFAULT_FONT_SIZE *
                         0.5).next_to(vec1.get_end(), UP)
         self.play(FadeIn(tip_text, tex))
         self.wait() 
+        self.pause(3)
+        #self.play(FadeOut(tip_text, theta_tracker, a, vec1, tex, g1, g2))
+        a = Angle(vec_ref, vec1, radius=0.5, other_angle=False)
+        vec1:Arrow = Arrow(ORIGIN, [-2, 0, 0], buff=0).set_color(RED) #need to recreate arrow that has no animations associated with it to display again without timing issues
+        g1.add(tip_text, a, vec1)
+        self.clear()
+        self.wait()
+        return g1
 
 
     def generate_rot(self)->Matrix:
@@ -110,10 +139,10 @@ class Main(Scene):
         m = self.generate_rot()
 
         self.add(m)
-        self.pause(5)
+        self.pause(0.5)
         self.play(FadeOut(m))
 
-    def matrixMult180(self):
+    def matrixMult180(self, g):
         rot = Matrix([["\cos \\theta", "-\sin\\theta"], ["\sin\\theta", "\cos\\theta"]], h_buff=2)
         rot1 = Matrix([["\cos \pi", "-\sin \pi"], ["\sin \pi", "\cos \pi "]], h_buff=2)
         m = Matrix([["x"], ["y"]])
@@ -123,11 +152,11 @@ class Main(Scene):
         rot.get_brackets().set_color(BLUE)
         rot1.get_brackets().set_color(BLUE)
         self.play(FadeIn(m, rot))
-        self.pause(1)
+        self.pause(0.5)
         m1 = Matrix([[1], [0]])
         m1.get_brackets().set_color(BLUE)
         m1.next_to(rot)
-        result_mat = Matrix([["x"], ["x"]]).set_color(config.background_color)
+        result_mat = Matrix([["-1"], ["0"]]).set_color(config.background_color)
         result_mat.get_brackets().set_color(BLUE)
         self.play(
             ReplacementTransform(rot, rot1, dim_to_match=1),
@@ -145,19 +174,73 @@ class Main(Scene):
         equal = Tex("\\textbf{=}", font_size=DEFAULT_FONT_SIZE + 5, color=GREEN).next_to(group)
         result_mat.next_to(equal)
         self.play(FadeIn(equal, result_mat))
-        self.pause(1)
+        self.pause(0.5)
 
-        self.animateMult180(rot1, m1, result_mat)
+        self.animateMult180(rot1, m1, result_mat, g, equal)
+    
+    def animateMult180(self, m: Matrix, m1: Matrix, result_mat: Matrix, g, equal0):
+        rows = m.get_rows()
+        cols = m1.get_columns()
+        equal = Tex("=")
+        result_entries = result_mat.get_entries()
+        final_ans = [MathTex(r"-1"), MathTex(r"0")]
+        ans_animated = [] #needed to remove later
 
-        #self.play(FadeOut(m))
+
+        for i in range(len(rows)):
+            
+            for j in range(len(cols)):
+                group_row = VGroup(SurroundingRectangle(rows[i]).set_color(PURPLE), rows[i].copy())
+                group_col = VGroup(SurroundingRectangle(cols[j]).set_color(PURPLE), cols[j].copy())
+                group_row.generate_target()
+                group_col.generate_target()
+                group_row.target.move_to(2*DOWN + 1.5 * LEFT)
+                group_col.target.move_to(2*DOWN + 0.5 * RIGHT)
+                self.play(FadeIn(group_row, group_col))
+                self.play(MoveToTarget(group_row), MoveToTarget(group_col))
+                ans = final_ans[i]
+                equal = equal.copy().next_to(group_col)
+                ans.next_to(equal) 
+                ans_display = SurroundingRectangle(ans).set_color(RED)
+                ans_group = VGroup(ans, ans_display)
+                self.play(FadeIn(equal, ans_group))
+                self.wait()
+                ans = ans.copy().set_color(YELLOW)
+                ans_animated.append(ans)
+                ans.generate_target()
+                ans.target.move_to(result_entries[i]) 
+                self.play(FadeOut(ans_group), MoveToTarget(ans))
+                self.play(FadeOut(group_col, group_row, equal))
+                result_entries[i].set_color(YELLOW) #stealthily reveal the entry even though it's being displayed by a text object
+        
+        self.play(FadeOut(m, m1, equal0, *ans_animated))
+        self.wait()
+
+        g.shift(3 * LEFT)
+        result_mat.generate_target()
+        m = Matrix([["x"], ["y"]])
+        m.get_brackets().set_color(BLUE)
+        m.shift(2.75*RIGHT) 
+        equal = Tex("\\textbf{=}",font_size=DEFAULT_FONT_SIZE + 5, color=GREEN).next_to(m)
+        result_mat.target.shift(4.15 * RIGHT)
+        self.play(FadeIn(g, m, equal), MoveToTarget(result_mat))
+        self.pause(0.5)
+        self.play(FadeOut(g, m, equal, result_mat))
     
     def generate_rot_pow2(self)->VGroup:
-        m = Matrix([["\cos \\theta", "-\sin\\theta"], ["\sin\\theta", "\cos\\theta"]], h_buff=2.6)
+        m = Matrix([["\cos \\theta", "-\sin\\theta"], ["\sin\\theta", "\cos\\theta"]], h_buff=2)
         brackets = m.get_brackets()
         brackets.set_color(BLUE)
         pow = MathTex(r"^2", font_size=DEFAULT_FONT_SIZE+30)
         pow.next_to(brackets[1].get_top())
         return VGroup(m, pow)
+    
+    def generate_rot_pow2_i(self)->VGroup:
+        m1 = Matrix([["\cos \\theta", "-\sin\\theta"], ["\sin\\theta", "\cos\\theta"]], h_buff=2)
+        m1.get_brackets().set_color(BLUE)
+        m2 = m1.copy() 
+        m2.next_to(m1)
+        return VGroup(m1, m2)
 
     def generate_rot_pow2_r(self)->Matrix:
         m = Matrix([["\cos^2 \\theta - \sin^2 \\theta", "-2\sin\\theta\cos\\theta"], ["2\sin\\theta\cos\\theta", "\cos^2\\theta - \sin^2\\theta"]], h_buff=3.5)
@@ -202,22 +285,29 @@ class Main(Scene):
         title: Tex = self.generate_title()
         eq1 = Tex("\\textbf{=}").set_color(GOLD)
         eq2 = Tex("\\textbf{=}").set_color(TEAL)
-        eq2.next_to(eq1, direction=DOWN)
+        eq2.next_to(eq1, direction=3*DOWN)
         left_cos = VGroup(left_entries[0].copy(), left_u1)
+        left_cos_anim = left_cos.animate.next_to(eq1, direction=LEFT)
         right_cos = VGroup(right_entries[0].copy(), right_u1)
+        right_cos_anim = right_cos.animate.next_to(eq1)
+
         left_sin = VGroup(left_entries[2].copy(), left_u2)
+        left_sin_anim = left_sin.animate.next_to(eq2, direction=LEFT)
         right_sin = VGroup(right_entries[2].copy(), right_u2)
-        left = VGroup(left_cos, left_sin).animate.next_to(eq1, direction=LEFT)
-        right = VGroup(right_cos, right_sin).animate.next_to(eq1, direction=RIGHT)
+        right_sin_anim = right_sin.animate.next_to(eq2)
+#        left = VGroup(left_cos, left_sin).animate.next_to(eq1, direction=LEFT)
+#        right = VGroup(right_cos, right_sin).animate.next_to(eq1, direction=RIGHT)
         self.play(
-            left, 
-            right, 
+            left_cos_anim,
+            left_sin_anim, 
+            right_cos_anim,
+            right_sin_anim, 
             FadeIn(title, eq1, eq2), 
             FadeOut(group, left_mat),
         )
-
-        
-        
+        self.wait()
+        group = Group(left_cos, right_cos, left_sin, right_sin, eq1, eq2)
+        self.play(group.animate.scale(1.5))
 
     def display_rot_pow2(self)->VGroup:
         m_group = self.generate_rot_pow2()
@@ -227,10 +317,14 @@ class Main(Scene):
         equal = Tex("\\textbf{=}", font_size = DEFAULT_FONT_SIZE+20)
         self.play(MoveToTarget(m_group))
         equal.next_to(m_group)
+        g_imm = self.generate_rot_pow2_i()
+        g_imm.next_to(equal)
+        self.play(FadeIn(g_imm, equal))
+        self.pause(0.5)
         m2 = self.generate_rot_pow2_r()
         m2.next_to(equal)
-        self.play(FadeIn(m2, equal))
-        self.pause(1)
+        self.play(ReplacementTransform(g_imm, m2))
+        self.pause(0.5)
         rect = SurroundingRectangle(m2.get_columns()[0])
         self.play(FadeIn(rect))
         self.wait()
@@ -280,59 +374,30 @@ class Main(Scene):
             MoveToTarget(sin2_2),
             FadeOut(entries[2]),
         )
-        self.pause(1)
+        self.wait()
+        self.play(FadeOut(*self.mobjects))
 
-    
-    def animateMult180(self, m: Matrix, m1: Matrix, result_mat: Matrix):
-        rows = m.get_rows()
-        cols = m1.get_columns()
-        equal = Tex("=")
-        result_entries = result_mat.get_entries()
-        final_ans = [MathTex(r"1"), MathTex(r"0")]
-        for i in range(len(rows)):
-            
-            for j in range(len(cols)):
-                group_row = VGroup(SurroundingRectangle(rows[i]).set_color(PURPLE), rows[i].copy())
-                group_col = VGroup(SurroundingRectangle(cols[j]).set_color(PURPLE), cols[j].copy())
-                group_row.generate_target()
-                group_col.generate_target()
-                group_row.target.move_to(2*DOWN + 1.5 * LEFT)
-                group_col.target.move_to(2*DOWN + 0.5 * RIGHT)
-                self.play(FadeIn(group_row, group_col))
-                self.play(MoveToTarget(group_row), MoveToTarget(group_col))
-                ans = final_ans[i]
-                equal = equal.copy().next_to(group_col)
-                ans.next_to(equal) 
-                ans_display = SurroundingRectangle(ans).set_color(RED)
-                ans_group = VGroup(ans, ans_display)
-                self.play(FadeIn(equal, ans_group))
-                self.wait()
-                ans = ans.copy().set_color(YELLOW)
-                ans.generate_target()
-                ans.target.move_to(result_entries[i]) 
-                self.play(FadeOut(ans_group), MoveToTarget(ans))
-                self.play(FadeOut(group_col, group_row, equal))
-
-
-    def intro(self):
+    def intro(self, pause = 1):
         '''
         '''
         title: Tex = self.generate_title() 
-        ids: Tex = Tex(r"\bm{$\cos2\theta$ \quad $\sin2\theta$}", color=green, tex_template=self._texTemplate, font_size=100).next_to(title, 2*DOWN)
+        ids: Tex = Tex(r"\bm{$\cos2\theta$ \quad $\sin2\theta$}", color=GREEN, tex_template=self._texTemplate, font_size=80).next_to(title, 4*DOWN)
 
         self.add(title)
-        self.play(FadeIn(ids), run_time=2)
+        self.play(FadeIn(ids), run_time=3)
+        self.pause(pause)
 
     def tex(self, text, color=None, template=None):
         template = self._texTemplate if not template else template
 
 
     
-    def show_book(self):
+    def show_book(self, pause = 1):
         img:ImageMobject = ImageMobject("math-girls-cover.jpg")
         img.scale_to_fit_height(config.frame_height)
-        self.play(FadeIn(img))
+        self.play(FadeIn(img), run_time = 2)
         self.wait()
+        self.pause(pause)
         self.play(FadeOut(img), run_time=2)
         
 
@@ -346,7 +411,7 @@ class Main(Scene):
         self._texTemplate = TexTemplate()
         self._texTemplate.add_to_preamble(r"\usepackage{bm}")
 
-    def create_plane(self):
+    def create_plane(self)->Group:
         '''
         Draw the 2d plane with the angles of each axis labelled in radians
         '''
@@ -378,4 +443,5 @@ class Main(Scene):
             buff=1
         )
         g = Group(plane, x_label, nx_label, y_label, ny_label)
-        self.play(FadeIn(g), run_time=5)
+        self.play(FadeIn(g), run_time=0.5)
+        return g
